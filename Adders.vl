@@ -1,0 +1,71 @@
+// Half Adder Module
+module half_adder(output sum, output carry, input a, input b);
+    xor(sum, a, b);
+    and(carry, a, b);
+endmodule
+
+// Full Adder Module
+module full_adder(output sum, output carry, input a, input b, input cin);
+    wire sum1, c1, c2;
+    half_adder h1(sum1, c1, a, b);
+    half_adder h2(sum, c2, sum1, cin);
+    or(carry, c1, c2);
+endmodule
+
+// Multiplexer Module
+module mux(input i0, input i1, input i2, input i3, input [1:0] s, output y);
+    wire [3:0] terms;
+    and(terms[0], ~s[1], ~s[0], i0);
+    and(terms[1], ~s[1],  s[0], i1);
+    and(terms[2],  s[1], ~s[0], i2);
+    and(terms[3],  s[1],  s[0], i3);
+    or(y, terms[0], terms[1], terms[2], terms[3]);
+endmodule
+
+// Main Circuit Module
+module circuit(
+    input [2:0] a, 
+    input [2:0] b, 
+    input [1:0] s, 
+    output [2:0] y, 
+    output [2:0] carry
+);
+    wire [5:0] muxOutput;
+
+    mux m0(a[0], a[0], b[0], 1'b1, s, muxOutput[0]);
+    mux m1(a[1], a[1], b[1], 1'b0, s, muxOutput[1]);
+    mux m2(a[2], a[2], b[2], 1'b0, s, muxOutput[2]);
+    mux m3(1'b1, b[0], a[0], b[0], s, muxOutput[3]);
+    mux m4(1'b0, b[1], a[1], b[1], s, muxOutput[4]);
+    mux m5(1'b0, b[2], a[2], b[2], s, muxOutput[5]);
+
+    full_adder f1(y[0], carry[0], muxOutput[0], muxOutput[3] ^ s[1], s[1]);
+    full_adder f2(y[1], carry[1], muxOutput[1], muxOutput[4] ^ s[1], carry[0]);
+    full_adder f3(y[2], carry[2], muxOutput[2], muxOutput[5] ^ s[1], carry[1]);
+endmodule
+
+// Testbench for the Circuit
+module test_circuit();
+    reg [2:0] a, b;
+    reg [1:0] s;
+    wire [2:0] y, carry;
+
+    circuit c(a, b, s, y, carry);
+
+    initial begin
+        $dumpfile("assign_encoder.vcd");
+        $dumpvars(0, test_circuit);
+        $monitor($time, " a=%b, b=%b, s=%b, y=%b, carry=%b", a, b, s, y, carry);
+
+        for (integer i = 0; i < 8; i = i + 1) begin
+            for (integer j = 0; j < 8; j = j + 1) begin
+                for (integer k = 0; k < 4; k = k + 1) begin
+                    a <= i;
+                    b <= j;
+                    s <= k;
+                    #1;
+                end
+            end
+        end
+    end
+endmodule
